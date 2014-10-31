@@ -1,19 +1,16 @@
-﻿using com.LandonKey.SocksWebProxy;
-using com.LandonKey.SocksWebProxy.Proxy;
-using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Tests
 {
+    using LandonKey.SocksWebProxy;
+    using LandonKey.SocksWebProxy.Proxy;
+
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             RunParallel(10, "https://check.torproject.org/");
 

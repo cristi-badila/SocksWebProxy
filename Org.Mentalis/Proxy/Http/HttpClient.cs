@@ -142,10 +142,10 @@ public class HttpClient : Client {
 		}
 	}
 	///<summary>Processes a specified query and connects to the requested HTTP web server.</summary>
-	///<param name="Query">A string containing the query to process.</param>
+	///<param name="query">A string containing the query to process.</param>
 	///<remarks>If there's an error while processing the HTTP request or when connecting to the remote server, the Proxy sends a "400 - Bad Request" error to the client.</remarks>
-	protected virtual void ProcessQuery(string Query) {
-		HeaderFields = ParseQuery(Query);
+	protected virtual void ProcessQuery(string query) {
+		HeaderFields = ParseQuery(query);
 		if (HeaderFields == null || !HeaderFields.ContainsKey("Host")) {
 			SendBadRequest();
 			return;
@@ -175,8 +175,8 @@ public class HttpClient : Client {
 				Port = 80;
 			}
 			if (HttpRequestType.ToUpper().Equals("POST")) {
-				int index = Query.IndexOf("\r\n\r\n");
-                m_HttpPost = Query.Substring(index + 4);
+				int index = query.IndexOf("\r\n\r\n");
+                m_HttpPost = query.Substring(index + 4);
 			}
 		}
 		try {

@@ -1,33 +1,12 @@
-﻿using Org.Mentalis.Network.ProxySocket;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace com.LandonKey.SocksWebProxy.Proxy
+﻿namespace LandonKey.SocksWebProxy.Proxy
 {
+    using System.Net;
+
+    using Org.Mentalis.Network.ProxySocket;
+
     public class ProxyConfig
     {
-        public enum SocksVersion
-        {
-            Four,
-            Five
-        }
-        public int HttpPort { get; set; }
-        public IPAddress HttpAddress { get; set; }
-        public int SocksPort { get; set; }
-        public IPAddress SocksAddress { get; set; }
-        public SocksVersion Version { get; set; }
-
-        public ProxyTypes ProxyType
-        {
-            get
-            {
-                return (Version == SocksVersion.Five) ? ProxyTypes.Socks5 : ProxyTypes.Socks4;
-            }
-        }
+        #region Constructors and Destructors
 
         public ProxyConfig()
         {
@@ -37,7 +16,8 @@ namespace com.LandonKey.SocksWebProxy.Proxy
             SocksPort = 9150;
             Version = SocksVersion.Five;
         }
-        public ProxyConfig(IPAddress httpIP, int httpPort,IPAddress socksIP,int socksPort,SocksVersion version)
+
+        public ProxyConfig(IPAddress httpIP, int httpPort, IPAddress socksIP, int socksPort, SocksVersion version)
         {
             HttpAddress = httpIP;
             HttpPort = httpPort;
@@ -45,5 +25,40 @@ namespace com.LandonKey.SocksWebProxy.Proxy
             SocksPort = socksPort;
             Version = version;
         }
+
+        #endregion
+
+        #region Enums
+
+        public enum SocksVersion
+        {
+            Four,
+
+            Five
+        }
+
+        #endregion
+
+        #region Public Properties
+
+        public IPAddress HttpAddress { get; set; }
+
+        public int HttpPort { get; set; }
+
+        public ProxyTypes ProxyType
+        {
+            get
+            {
+                return (Version == SocksVersion.Five) ? ProxyTypes.Socks5 : ProxyTypes.Socks4;
+            }
+        }
+
+        public IPAddress SocksAddress { get; set; }
+
+        public int SocksPort { get; set; }
+
+        public SocksVersion Version { get; set; }
+
+        #endregion
     }
 }

@@ -1,91 +1,102 @@
-﻿using Org.Mentalis.Network.ProxySocket;
-using Org.Mentalis.Proxy;
-using Org.Mentalis.Proxy.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace com.LandonKey.SocksWebProxy.Proxy
+﻿namespace LandonKey.SocksWebProxy.Proxy
 {
+    using System;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Text;
+
+    using Org.Mentalis.Network.ProxySocket;
+    using Org.Mentalis.Proxy;
+    using Org.Mentalis.Proxy.Http;
+
     public sealed class ProxyClient : HttpClient
     {
-        private ProxyConfig Config { get; set; }
-        public ProxyClient(ProxyConfig config, Socket ClientSocket, DestroyDelegate Destroyer)
-            : base(ClientSocket, Destroyer)
+        #region Constructors and Destructors
+
+        public ProxyClient(ProxyConfig config, Socket clientSocket, DestroyDelegate destroyer)
+            : base(clientSocket, destroyer)
         {
             Config = config;
         }
 
-        protected override void ProcessQuery(string Query)
+        #endregion
+
+        #region Properties
+
+        private ProxyConfig Config { get; set; }
+
+        #endregion
+
+        #region Methods
+
+        protected override void ProcessQuery(string query)
         {
-            HeaderFields = ParseQuery(Query);
+            HeaderFields = ParseQuery(query);
             if (HeaderFields == null || !HeaderFields.ContainsKey("Host"))
             {
                 SendBadRequest();
                 return;
             }
-            int Port;
-            string Host;
-            int Ret;
+            int port;
+            string host;
+            int ret;
             if (HttpRequestType.ToUpper().Equals("CONNECT"))
-            { //HTTPS
-                Ret = RequestedPath.IndexOf(":");
-                if (Ret >= 0)
+            {
+                //HTTPS
+                ret = RequestedPath.IndexOf(":", StringComparison.Ordinal);
+                if (ret >= 0)
                 {
-                    Host = RequestedPath.Substring(0, Ret);
-                    if (RequestedPath.Length > Ret + 1)
-                        Port = int.Parse(RequestedPath.Substring(Ret + 1));
-                    else
-                        Port = 443;
+                    host = RequestedPath.Substring(0, ret);
+                    port = RequestedPath.Length > ret + 1 ? int.Parse(RequestedPath.Substring(ret + 1)) : 443;
                 }
                 else
                 {
-                    Host = RequestedPath;
-                    Port = 443;
+                    host = RequestedPath;
+                    port = 443;
                 }
             }
             else
-            { //Normal HTTP
-                Ret = ((string)HeaderFields["Host"]).IndexOf(":");
-                if (Ret > 0)
+            {
+                //Normal HTTP
+                ret = HeaderFields["Host"].IndexOf(":", StringComparison.Ordinal);
+                if (ret > 0)
                 {
-                    Host = ((string)HeaderFields["Host"]).Substring(0, Ret);
-                    Port = int.Parse(((string)HeaderFields["Host"]).Substring(Ret + 1));
+                    host = HeaderFields["Host"].Substring(0, ret);
+                    port = int.Parse(HeaderFields["Host"].Substring(ret + 1));
                 }
                 else
                 {
-                    Host = (string)HeaderFields["Host"];
-                    Port = 80;
+                    host = HeaderFields["Host"];
+                    port = 80;
                 }
                 if (HttpRequestType.ToUpper().Equals("POST"))
                 {
-                    int index = Query.IndexOf("\r\n\r\n");
-                    m_HttpPost = Query.Substring(index + 4);
+                    var index = query.IndexOf("\r\n\r\n", StringComparison.Ordinal);
+                    m_HttpPost = query.Substring(index + 4);
                 }
             }
             try
             {
                 DestinationSocket = new ProxySocket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                
+
                 ((ProxySocket)DestinationSocket).ProxyEndPoint = new IPEndPoint(Config.SocksAddress, Config.SocksPort);
                 ((ProxySocket)DestinationSocket).ProxyUser = "username";
                 ((ProxySocket)DestinationSocket).ProxyPass = "password";
                 ((ProxySocket)DestinationSocket).ProxyType = Config.ProxyType;
-                
-                if (HeaderFields.ContainsKey("Proxy-Connection") && HeaderFields["Proxy-Connection"].ToLower().Equals("keep-alive"))
-                    ((ProxySocket)DestinationSocket).SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
-                ((ProxySocket)DestinationSocket).BeginConnect(Host, Port, new AsyncCallback(this.OnProxyConnected), DestinationSocket);
+
+                if (HeaderFields.ContainsKey("Proxy-Connection")
+                    && HeaderFields["Proxy-Connection"].ToLower().Equals("keep-alive"))
+                {
+                    DestinationSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, 1);
+                }
+                ((ProxySocket)DestinationSocket).BeginConnect(host, port, OnProxyConnected, DestinationSocket);
             }
             catch
             {
                 SendBadRequest();
-                return;
             }
         }
+
         private void OnProxyConnected(IAsyncResult ar)
         {
             try
@@ -93,14 +104,28 @@ namespace com.LandonKey.SocksWebProxy.Proxy
                 ((ProxySocket)DestinationSocket).EndConnect(ar);
                 string rq;
                 if (HttpRequestType.ToUpper().Equals("CONNECT"))
-                { //HTTPS
+                {
+                    //HTTPS
                     rq = HttpVersion + " 200 Connection established\r\nProxy-Agent: SocksWebProxy\r\n\r\n";
-                    base.ClientSocket.BeginSend(Encoding.ASCII.GetBytes(rq), 0, rq.Length, SocketFlags.None, new AsyncCallback(this.OnOkSent), ClientSocket);
+                    ClientSocket.BeginSend(
+                        Encoding.ASCII.GetBytes(rq),
+                        0,
+                        rq.Length,
+                        SocketFlags.None,
+                        OnOkSent,
+                        ClientSocket);
                 }
                 else
-                { //Normal HTTP
+                {
+                    //Normal HTTP
                     rq = RebuildQuery();
-                    DestinationSocket.BeginSend(Encoding.ASCII.GetBytes(rq), 0, rq.Length, SocketFlags.None, new AsyncCallback(this.OnQuerySent), DestinationSocket);
+                    DestinationSocket.BeginSend(
+                        Encoding.ASCII.GetBytes(rq),
+                        0,
+                        rq.Length,
+                        SocketFlags.None,
+                        OnQuerySent,
+                        DestinationSocket);
                 }
             }
             catch
@@ -108,5 +133,7 @@ namespace com.LandonKey.SocksWebProxy.Proxy
                 Dispose();
             }
         }
+
+        #endregion
     }
 }

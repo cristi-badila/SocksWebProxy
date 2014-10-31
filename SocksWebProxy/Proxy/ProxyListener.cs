@@ -1,20 +1,13 @@
-﻿using Org.Mentalis.Proxy;
-using Org.Mentalis.Proxy.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace com.LandonKey.SocksWebProxy.Proxy
+﻿namespace LandonKey.SocksWebProxy.Proxy
 {
-    public sealed class ProxyListener : Org.Mentalis.Proxy.Http.HttpListener
+    using System;
+
+    using Org.Mentalis.Proxy.Http;
+
+    public sealed class ProxyListener : HttpListener
     {
-        public int Port { get; private set; }
-        public ProxyConfig.SocksVersion Version { get; private set; }
-        private ProxyConfig Config { get; set; }
+        #region Constructors and Destructors
+
         public ProxyListener(ProxyConfig config)
             : base(config.HttpAddress, config.HttpPort)
         {
@@ -22,28 +15,51 @@ namespace com.LandonKey.SocksWebProxy.Proxy
             Version = config.Version;
             Config = config;
         }
+
+        #endregion
+
+        #region Public Properties
+
+        public new int Port { get; private set; }
+
+        public ProxyConfig.SocksVersion Version { get; private set; }
+
+        #endregion
+
+        #region Properties
+
+        private ProxyConfig Config { get; set; }
+
+        #endregion
+
+        #region Public Methods and Operators
+
         public override void OnAccept(IAsyncResult ar)
         {
             try
             {
-                Socket NewSocket = ListenSocket.EndAccept(ar);
-                if (NewSocket != null)
+                var newSocket = ListenSocket.EndAccept(ar);
+                if (newSocket != null)
                 {
-                    ProxyClient NewClient = new ProxyClient(Config, NewSocket, new DestroyDelegate(this.RemoveClient));
-                    AddClient(NewClient);
-                    NewClient.StartHandshake();
+                    var newClient = new ProxyClient(Config, newSocket, RemoveClient);
+                    AddClient(newClient);
+                    newClient.StartHandshake();
                 }
             }
-            catch { }
+            catch
+            {
+            }
             try
             {
                 //Restart Listening
-                ListenSocket.BeginAccept(new AsyncCallback(this.OnAccept), ListenSocket);
+                ListenSocket.BeginAccept(OnAccept, ListenSocket);
             }
             catch
             {
                 Dispose();
             }
         }
+
+        #endregion
     }
 }

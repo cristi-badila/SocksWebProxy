@@ -1,66 +1,57 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using Org.Mentalis.Proxy.Http;
-using Org.Mentalis.Network.ProxySocket;
-using com.LandonKey.SocksWebProxy.Proxy;
-
-namespace com.LandonKey.SocksWebProxy
+﻿namespace LandonKey.SocksWebProxy
 {
-    public class SocksWebProxy:IWebProxy
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Net;
+    using System.Net.NetworkInformation;
+
+    using LandonKey.SocksWebProxy.Proxy;
+
+    public class SocksWebProxy : IWebProxy
     {
-        private static object locker = new object();
+        #region Static Fields
+
+        private static readonly object Locker = new object();
+
         private static List<ProxyListener> listeners;
 
-        private ProxyListener GetListener(ProxyConfig config)
-        {   
-            lock(locker)
-            {
-                if (listeners == null)
-                    listeners = new List<ProxyListener>();
+        #endregion
 
-                var listener = listeners.Where(x => x.Port == config.HttpPort).FirstOrDefault();
-
-                if(listener == null)
-                {
-                    listener = new ProxyListener(config);
-                    listener.Start();
-                    listeners.Add(listener);
-                }
-
-                if (listener.Version != config.Version) 
-                    throw new Exception("Socks Version Mismatch for Port " + config.HttpPort);
-
-                return listener;
-            }
-        }
-
-        private ProxyConfig Config { get; set; }
+        #region Constructors and Destructors
 
         public SocksWebProxy(ProxyConfig config = null)
         {
             Config = config;
             GetListener(config);
         }
-        private ICredentials cred = null;
-        public ICredentials Credentials
-        {
-            get
-            {
-                return cred;
-            }
-            set
-            {
-                cred = value;
-            }
-        }
+
+        #endregion
+
+        #region Public Properties
+
+        public ICredentials Credentials { get; set; }
+
+        #endregion
+
+        #region Properties
+
+        private ProxyConfig Config { get; set; }
+
+        #endregion
+
+        #region Public Methods and Operators
 
         public Uri GetProxy(Uri destination)
         {
             return new Uri("http://127.0.0.1:" + Config.HttpPort);
+        }
+
+        public bool IsActive()
+        {
+            var isSocksPortListening =
+                IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(x => x.Port == Config.SocksPort);
+            return isSocksPortListening;
         }
 
         public bool IsBypassed(Uri host)
@@ -68,10 +59,35 @@ namespace com.LandonKey.SocksWebProxy
             return !IsActive();
         }
 
-        public bool IsActive()
+        #endregion
+
+        #region Methods
+
+        private static void GetListener(ProxyConfig config)
         {
-            var isSocksPortListening = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(x => x.Port == Config.SocksPort);
-            return isSocksPortListening;
+            lock (Locker)
+            {
+                if (listeners == null)
+                {
+                    listeners = new List<ProxyListener>();
+                }
+
+                var listener = listeners.FirstOrDefault(x => x.Port == config.HttpPort);
+
+                if (listener == null)
+                {
+                    listener = new ProxyListener(config);
+                    listener.Start();
+                    listeners.Add(listener);
+                }
+
+                if (listener.Version != config.Version)
+                {
+                    throw new Exception("Socks Version Mismatch for Port " + config.HttpPort);
+                }
+            }
         }
+
+        #endregion
     }
 }
